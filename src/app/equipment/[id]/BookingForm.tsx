@@ -21,9 +21,14 @@ export function BookingForm({ equipmentId }: { equipmentId: string }) {
     try {
       const startIso = new Date(`${startDate}T${startTime}`).toISOString();
       const endIso = new Date(`${endDate}T${endTime}`).toISOString();
-      
+
       const res = await requestBooking(equipmentId, startIso, endIso, reason);
-      
+
+      if (res.status === "ERROR") {
+        alert(res.message);
+        return;
+      }
+
       alert(res.message);
       setShowForm(false);
       setReason("");

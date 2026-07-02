@@ -1,160 +1,207 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, Lock, CheckCircle, Clock } from "lucide-react";
+import { requestLabAccess } from "@/app/equipment/[id]/access-actions";
 
-export function DirectoryClient({ labs, hasSession }: { labs: any[], hasSession: boolean }) {
-  const [selectedBuilding, setSelectedBuilding] = useState<string>("");
-  const [selectedLabId, setSelectedLabId] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState("");
+interface LabData {
+  id: string;
+  name: string;
+  building: string;
+  room: string;
+  equipmentCount: number;
+  hasAccess: boolean;
+  hasPendingRequest: boolean;
+}
 
-  const buildings = Array.from(new Set(labs.map(lab => lab.building))).sort();
-  
-  const filteredLabs = selectedBuilding ? labs.filter(lab => lab.building === selectedBuilding).sort((a,b) => a.name.localeCompare(b.name)) : [];
-  
-  let filteredEquipment: any[] = [];
-  if (selectedLabId) {
-    const lab = filteredLabs.find(l => l.id === selectedLabId);
-    if (lab) filteredEquipment = lab.equipment;
-  } else if (selectedBuilding) {
-    filteredEquipment = filteredLabs.flatMap(l => l.equipment);
-  } else {
-    filteredEquipment = labs.flatMap(l => l.equipment);
-  }
+function LabAccessForm({ labId }: { labId: string }) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
-  if (searchQuery) {
-    filteredEquipment = labs.flatMap(l => l.equipment).filter(e => 
-      e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      e.type.toLowerCase().includes(searchQuery.toLowerCase())
+  if (submitted) {
+    return (
+      <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 text-center">
+        Request submitted. The admin will review it shortly.
+      </div>
     );
   }
 
-  filteredEquipment.sort((a, b) => a.name.localeCompare(b.name));
-
-  const handleBuildingSelect = (building: string) => {
-    setSelectedBuilding(building);
-    setSelectedLabId("");
-    setSearchQuery("");
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-3 w-full text-sm font-bold py-2 px-3 rounded-md border border-ncsu-red text-ncsu-red bg-white hover:bg-red-50 transition-colors"
+      >
+        Request Lab Access
+      </button>
+    );
   }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      const result = await requestLabAccess(labId, message);
+      if (result.success) {
+        setSubmitted(true);
+      } else {
+        setError(result.error || "Failed to submit request.");
+      }
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-3 space-y-2">
+      <textarea
+        rows={2}
+        value={message}
+        onChange={e => setMessage(e.target.value)}
+        placeholder="Briefly describe your research or reason for needing access..."
+        className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-ncsu-red placeholder-gray-400"
+      />
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="flex-1 text-sm font-bold py-2 px-3 rounded-md bg-ncsu-red text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          {isPending ? "Submitting…" : "Submit Request"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-sm text-gray-500 hover:text-gray-700 px-3"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function LabCard({
+  lab,
+  isLoggedIn,
+}: {
+  lab: LabData;
+  isLoggedIn: boolean;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-ncsu-red px-5 py-4 text-white">
+        <h2 className="font-slab font-bold text-lg leading-snug">{lab.name}</h2>
+        <p className="text-white/75 text-xs mt-1 font-medium uppercase tracking-wide">
+          {lab.building} &middot; Room {lab.room}
+        </p>
+      </div>
+
+      <div className="p-5 flex flex-col flex-1 gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-500">
+            {lab.equipmentCount} instrument{lab.equipmentCount !== 1 ? "s" : ""}
+          </span>
+
+          {lab.hasAccess ? (
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+              <CheckCircle size={11} /> Access Granted
+            </span>
+          ) : lab.hasPendingRequest ? (
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+              <Clock size={11} /> Request Pending
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">
+              <Lock size={11} /> No Access
+            </span>
+          )}
+        </div>
+
+        <div className="mt-auto pt-1">
+          {lab.hasAccess ? (
+            <Link
+              href={`/labs/${lab.id}`}
+              className="block w-full text-center text-sm font-bold py-2 px-4 rounded-md bg-ncsu-red text-white hover:opacity-90 transition-opacity"
+            >
+              View Equipment →
+            </Link>
+          ) : !isLoggedIn ? (
+            <p className="text-xs text-gray-500 text-center py-2">
+              Sign in to request access to this lab.
+            </p>
+          ) : lab.hasPendingRequest ? (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 text-center">
+              Your request is awaiting admin review.
+            </p>
+          ) : (
+            <LabAccessForm labId={lab.id} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function LabsDirectoryClient({
+  labs,
+  isLoggedIn,
+  isAdmin,
+}: {
+  labs: LabData[];
+  isLoggedIn: boolean;
+  isAdmin: boolean;
+}) {
+  const [search, setSearch] = useState("");
+
+  const filtered = search
+    ? labs.filter(
+        l =>
+          l.name.toLowerCase().includes(search.toLowerCase()) ||
+          l.building.toLowerCase().includes(search.toLowerCase())
+      )
+    : labs;
 
   return (
     <div>
       <div className="mb-8 border-b border-gray-200 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-slab font-bold text-gray-900">Lab Equipment Directory</h1>
-          <p className="text-sm text-gray-500 mt-2">Browse available tools across all facilities.</p>
+          <h1 className="text-3xl md:text-4xl font-slab font-bold text-gray-900">
+            Labs Directory
+          </h1>
+          <p className="text-sm text-gray-500 mt-2">
+            Select a lab to browse its equipment. Request access if you have not been authorized yet.
+          </p>
         </div>
         <div className="relative w-full md:w-72">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search size={16} className="text-gray-400" />
           </div>
-          <input 
-            type="text" 
-            placeholder="Search all equipment..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+          <input
+            type="text"
+            placeholder="Search labs or buildings..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
           />
         </div>
       </div>
-      
-      {!hasSession && (
+
+      {!isLoggedIn && (
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded shadow-sm text-sm font-medium">
-          Note: You must log in to record usage or request reservations.
+          Sign in with your university account to request lab access and book equipment.
         </div>
       )}
 
-      {!searchQuery && (
-        <div className="mb-8 space-y-6 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-          <div>
-            <p className="text-sm text-gray-700 mb-4">Select a building:</p>
-            <div className="flex flex-wrap gap-6">
-              {buildings.map(building => (
-                <label key={building} className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                  <input 
-                    type="radio" 
-                    name="building" 
-                    value={building} 
-                    checked={selectedBuilding === building} 
-                    onChange={() => handleBuildingSelect(building)}
-                    className="accent-ncsu-red w-4 h-4 cursor-pointer"
-                  />
-                  {building}
-                </label>
-              ))}
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                  <input 
-                    type="radio" 
-                    name="building" 
-                    value="" 
-                    checked={selectedBuilding === ""} 
-                    onChange={() => handleBuildingSelect("")}
-                    className="accent-ncsu-red w-4 h-4 cursor-pointer"
-                  />
-                  All Buildings
-                </label>
-            </div>
-          </div>
-
-          {selectedBuilding && filteredLabs.length > 0 && (
-            <div className="pt-6 mt-2 border-t border-gray-100">
-              <p className="text-sm text-gray-700 mb-4">Select a type of space or workstation:</p>
-              <div className="flex flex-wrap gap-6">
-                {filteredLabs.map(lab => (
-                  <label key={lab.id} className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                    <input 
-                      type="radio" 
-                      name="lab" 
-                      value={lab.id} 
-                      checked={selectedLabId === lab.id} 
-                      onChange={() => setSelectedLabId(lab.id)}
-                      className="accent-ncsu-red w-4 h-4 cursor-pointer"
-                    />
-                    {lab.name}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {filteredEquipment.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          No equipment found for the selected criteria.
-        </div>
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">No labs found.</div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredEquipment.map((item: any) => {
-             const lab = labs.find(l => l.id === item.labId);
-             
-             return (
-              <Link 
-                key={item.id} 
-                href={`/equipment/${item.id}`} 
-                className="block relative bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-ncsu-red/40 transition-shadow duration-200 p-4"
-              >
-                <div className="pb-3 border-b border-gray-100 mb-3">
-                  <h3 className="text-base md:text-lg font-bold text-gray-900 truncate">{item.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{item.type}</p>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-700 text-xs truncate max-w-[55%]">
-                    📍 {lab ? lab.name : 'Unknown'}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide border ${
-                    item.status === 'AVAILABLE' ? 'bg-green-50 text-green-700 border-green-200' : 
-                    item.status === 'IN_USE' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 
-                    'bg-red-50 text-red-700 border-red-200'
-                  }`}>
-                    {item.status.replace('_', ' ')}
-                  </span>
-                </div>
-              </Link>
-             );
-          })}
+          {filtered.map(lab => (
+            <LabCard key={lab.id} lab={lab} isLoggedIn={isLoggedIn} />
+          ))}
         </div>
       )}
     </div>

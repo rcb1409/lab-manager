@@ -123,6 +123,48 @@ export const adminRescheduleBooking = adminAction(async (session, bookingId: str
   revalidatePath('/bookings');
 });
 
+export const updateEquipmentAvailability = adminAction(
+  async (
+    _session,
+    equipmentId: string,
+    data: { bookingWindowStart: string | null; bookingWindowEnd: string | null; bookingDays: string | null }
+  ) => {
+    await prisma.equipment.update({
+      where: { id: equipmentId },
+      data: {
+        bookingWindowStart: data.bookingWindowStart,
+        bookingWindowEnd: data.bookingWindowEnd,
+        bookingDays: data.bookingDays,
+      },
+    });
+    revalidatePath('/admin/labs');
+    return { success: true };
+  }
+);
+
+export const setEquipmentStatus = adminAction(
+  async (_session, equipmentId: string, newStatus: 'AVAILABLE' | 'MAINTENANCE') => {
+    const equipment = await prisma.equipment.findUnique({
+      where: { id: equipmentId },
+      include: { usageLogs: { where: { endTime: null }, take: 1 } },
+    });
+    if (!equipment) throw new Error('Equipment not found');
+
+    if (equipment.usageLogs.length > 0) {
+      await prisma.usageLog.update({
+        where: { id: equipment.usageLogs[0].id },
+        data: { endTime: new Date() },
+      });
+    }
+
+    await prisma.equipment.update({ where: { id: equipmentId }, data: { status: newStatus } });
+
+    revalidatePath('/admin');
+    revalidatePath(`/equipment/${equipmentId}`);
+    return { success: true };
+  }
+);
+
 export const adminScheduleMaintenance = adminAction(async (session, equipmentId: string, startIso: string, endIso: string) => {
   const requestedStart = new Date(startIso);
   const requestedEnd = new Date(endIso);

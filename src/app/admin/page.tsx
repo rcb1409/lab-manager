@@ -1,81 +1,116 @@
 import { PrismaClient } from "@prisma/client";
+import Link from "next/link";
+import { StatusBoardClient } from "./StatusBoardClient";
 
 const prisma = new PrismaClient();
 
 export default async function AdminOverviewPage() {
-  const [totalEquipment, totalLabs, activeSessions, pendingBookings] = await Promise.all([
-    prisma.equipment.count(),
-    prisma.lab.count(),
-    prisma.usageLog.count({ where: { endTime: null } }),
-    prisma.booking.count({ where: { status: 'PENDING' } })
+  const [labs, pendingBookings, pendingAccess] = await Promise.all([
+    prisma.lab.findMany({
+      include: {
+        equipment: {
+          include: {
+            usageLogs: {
+              where: { endTime: null },
+              include: { user: { select: { name: true, email: true } } },
+              take: 1,
+            },
+            bookings: {
+              where: {
+                status: "APPROVED",
+                requestedStart: { gte: new Date() },
+              },
+              orderBy: { requestedStart: "asc" },
+              take: 2,
+              include: { user: { select: { name: true, email: true } } },
+            },
+          },
+          orderBy: { name: "asc" },
+        },
+      },
+      orderBy: [{ building: "asc" }, { name: "asc" }],
+    }),
+    prisma.booking.count({ where: { status: "PENDING" } }),
+    prisma.accessRequest.count({ where: { status: "PENDING" } }),
   ]);
 
-  const recentLogs = await prisma.usageLog.findMany({
-    take: 5,
-    orderBy: { startTime: 'desc' },
-    include: { user: { select: { name: true } }, equipment: { select: { name: true, lab: { select: { name: true } } } } }
-  });
+  const activeSessions = labs
+    .flatMap((l) => l.equipment)
+    .filter((e) => e.usageLogs.length > 0).length;
+
+  const serializedLabs = labs.map((lab) => ({
+    id: lab.id,
+    name: lab.name,
+    building: lab.building,
+    room: lab.room,
+    bookingWindowStart: (lab as any).bookingWindowStart ?? null,
+    bookingWindowEnd: (lab as any).bookingWindowEnd ?? null,
+    bookingDays: (lab as any).bookingDays ?? null,
+    equipment: lab.equipment.map((eq) => ({
+      id: eq.id,
+      name: eq.name,
+      type: eq.type,
+      status: eq.status as string,
+      activeLog: eq.usageLogs[0]
+        ? {
+            id: eq.usageLogs[0].id,
+            startTime: eq.usageLogs[0].startTime.toISOString(),
+            user: {
+              name: eq.usageLogs[0].user.name,
+              email: eq.usageLogs[0].user.email,
+            },
+          }
+        : null,
+      upcomingBookings: eq.bookings.map((b) => ({
+        id: b.id,
+        requestedStart: b.requestedStart.toISOString(),
+        requestedEnd: b.requestedEnd.toISOString(),
+        user: { name: b.user.name, email: b.user.email },
+      })),
+    })),
+  }));
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard Overview</h1>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-medium text-gray-500 mb-1">Total Equipment</p>
-          <p className="text-3xl font-bold text-gray-900">{totalEquipment}</p>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-medium text-gray-500 mb-1">Labs</p>
-          <p className="text-3xl font-bold text-gray-900">{totalLabs}</p>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-indigo-200 shadow-sm bg-indigo-50">
-          <p className="text-sm font-medium text-indigo-800 mb-1">Active Sessions</p>
-          <p className="text-3xl font-bold text-indigo-600">{activeSessions}</p>
-        </div>
-        <div className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm bg-amber-50">
-          <p className="text-sm font-medium text-amber-800 mb-1">Pending Bookings</p>
-          <p className="text-3xl font-bold text-amber-600">{pendingBookings}</p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-end border-b border-gray-200 pb-4">
+        <div>
+          <h1 className="text-2xl font-slab font-bold text-gray-900">
+            Live Status
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Real-time equipment status across all labs. Click any action to update
+            immediately.
+          </p>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-lg font-bold text-gray-900">Recent Usage Activity</h2>
-        </div>
-        <ul className="divide-y divide-gray-200">
-          {recentLogs.map((log) => (
-            <li key={log.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex justify-between">
-                <div>
-                  <p className="font-semibold text-gray-900">{log.user.name}</p>
-                  <p className="text-sm text-gray-500">
-                    Used <span className="font-medium text-gray-700">{log.equipment.name}</span> in {log.equipment.lab.name}
-                  </p>
-                  {log.notes && (
-                    <p className="text-sm text-gray-600 mt-2 bg-gray-100 p-2 rounded italic">
-                      "{log.notes}"
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">{log.startTime.toLocaleDateString()}</p>
-                  <p className="text-xs font-bold mt-1">
-                    {log.endTime ? (
-                      <span className="text-gray-500 bg-gray-100 px-2 py-1 rounded">Completed</span>
-                    ) : (
-                      <span className="text-green-700 bg-green-100 px-2 py-1 rounded">In Progress</span>
-                    )}
-                  </p>
-                </div>
-              </div>
-            </li>
-          ))}
-          {recentLogs.length === 0 && (
-            <li className="p-6 text-center text-gray-500">No usage logs found.</li>
+      {/* Alert badges for items needing attention */}
+      {(pendingBookings > 0 || pendingAccess > 0) && (
+        <div className="flex flex-wrap gap-3">
+          {pendingBookings > 0 && (
+            <Link
+              href="/admin/bookings"
+              className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-sm font-bold px-4 py-2 rounded-lg hover:bg-amber-100 transition-colors"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              {pendingBookings} booking{pendingBookings !== 1 ? "s" : ""} need
+              approval
+            </Link>
           )}
-        </ul>
-      </div>
+          {pendingAccess > 0 && (
+            <Link
+              href="/admin/access"
+              className="inline-flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-800 text-sm font-bold px-4 py-2 rounded-lg hover:bg-rose-100 transition-colors"
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+              {pendingAccess} access request{pendingAccess !== 1 ? "s" : ""}{" "}
+              pending
+            </Link>
+          )}
+        </div>
+      )}
+
+      <StatusBoardClient labs={serializedLabs} />
     </div>
   );
 }

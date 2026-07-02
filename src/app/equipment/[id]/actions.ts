@@ -126,7 +126,46 @@ export const requestBooking = userAction(async (session: any, equipmentId: strin
   const requestedStart = new Date(startIso);
   const requestedEnd = new Date(endIso);
 
-  const equipment = await prisma.equipment.findUnique({ where: { id: equipmentId } });
+  const equipment = await prisma.equipment.findUnique({
+    where: { id: equipmentId },
+    include: { lab: true },
+  });
+
+  // Enforce booking window: equipment-level takes precedence over lab-level
+  const eq = equipment as any;
+  const lab = eq?.lab as any;
+  const winStart: string | null = eq?.bookingWindowStart ?? lab?.bookingWindowStart ?? null;
+  const winEnd: string | null = eq?.bookingWindowEnd ?? lab?.bookingWindowEnd ?? null;
+  const winDays: string | null = eq?.bookingWindowStart
+    ? (eq?.bookingDays ?? null)
+    : (lab?.bookingDays ?? null);
+
+  if (winStart && winEnd) {
+    const toHHMM = (d: Date) => d.toTimeString().slice(0, 5);
+    const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const fmt12 = (t: string) => {
+      const [h, m] = t.split(":");
+      const hr = +h;
+      return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+    };
+    const allowedDays = winDays
+      ? new Set(winDays.split(","))
+      : new Set(["0", "1", "2", "3", "4", "5", "6"]);
+    const checkSlot = (dt: Date) =>
+      allowedDays.has(dt.getDay().toString()) &&
+      toHHMM(dt) >= winStart &&
+      toHHMM(dt) <= winEnd;
+
+    if (!checkSlot(requestedStart) || !checkSlot(requestedEnd)) {
+      const dayStr = winDays
+        ? winDays.split(",").map((d: string) => DAY_NAMES[+d]).join(", ")
+        : "all days";
+      return {
+        status: "ERROR" as const,
+        message: `Bookings are only allowed ${dayStr}, ${fmt12(winStart)} – ${fmt12(winEnd)}.`,
+      };
+    }
+  }
 
   const overlappingBookings = await prisma.booking.findMany({
     where: {

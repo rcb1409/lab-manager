@@ -8,26 +8,37 @@ generator client {
 }
 
 model Lab {
-  id        String      @id @default(uuid())
-  name      String
-  building  String
-  room      String
-  equipment Equipment[]
+  id                 String          @id @default(uuid())
+  name               String
+  building           String
+  room               String
+  bookingWindowStart String?         // HH:MM e.g. "09:00"
+  bookingWindowEnd   String?         // HH:MM e.g. "17:00"
+  bookingDays        String?         // comma-separated 0=Sun…6=Sat; null = all days
+  equipment          Equipment[]
+  labAccesses        LabAccess[]
+  accessRequests     AccessRequest[]
 }
 
 model Equipment {
-  id               String      @id @default(uuid())
-  labId            String
-  name             String
-  type             String
-  qrCodeUrl        String?
-  status           EquipmentStatus @default(AVAILABLE)
-  googleCalendarId String?     
-  lab              Lab         @relation(fields: [labId], references: [id], onDelete: Cascade)
-  usageLogs        UsageLog[]
-  bookings         Booking[]
+  id                  String            @id @default(uuid())
+  labId               String
+  name                String
+  type                String
+  qrCodeUrl           String?
+  status              EquipmentStatus   @default(AVAILABLE)
+  googleCalendarId    String?
+  onboardingRequired  Boolean           @default(false)
+  onboardingMaterials String?           @db.Text
+  bookingWindowStart  String?           // HH:MM — overrides lab window when set
+  bookingWindowEnd    String?
+  bookingDays         String?           // comma-separated 0=Sun…6=Sat; null = all days
+  lab                 Lab               @relation(fields: [labId], references: [id], onDelete: Cascade)
+  usageLogs           UsageLog[]
+  bookings            Booking[]
+  equipmentAccesses   EquipmentAccess[]
+  accessRequests      AccessRequest[]
 }
-
 
 enum EquipmentStatus {
   AVAILABLE
@@ -36,16 +47,22 @@ enum EquipmentStatus {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  name           String?
-  email          String    @unique
-  emailVerified  DateTime?
-  image          String?
-  role           Role      @default(USER)
-  accounts       Account[]
-  sessions       Session[]
-  usageLogs      UsageLog[]
-  bookings       Booking[]
+  id                    String            @id @default(uuid())
+  name                  String?
+  email                 String            @unique
+  emailVerified         DateTime?
+  image                 String?
+  role                  Role              @default(USER)
+  accounts              Account[]
+  sessions              Session[]
+  usageLogs             UsageLog[]
+  bookings              Booking[]
+  labAccesses           LabAccess[]
+  equipmentAccesses     EquipmentAccess[]
+  accessRequests        AccessRequest[]
+  grantedLabAccesses    LabAccess[]       @relation("LabAccessGrantedBy")
+  grantedEquipAccesses  EquipmentAccess[] @relation("EquipmentAccessGrantedBy")
+  resolvedAccessReqs    AccessRequest[]   @relation("AccessRequestResolvedBy")
 }
 
 model Account {
@@ -95,25 +112,80 @@ model UsageLog {
   startTime      DateTime
   endTime        DateTime?
   notes          String?   @db.Text
-  googleEventId  String?  
+  googleEventId  String?
   equipment      Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Booking {
-  id             String    @id @default(uuid())
+  id             String        @id @default(uuid())
   equipmentId    String
   userId         String
   requestedStart DateTime
   requestedEnd   DateTime
-  reason         String?   @db.Text
+  reason         String?       @db.Text
   status         BookingStatus @default(PENDING)
   approvedById   String?
-  googleEventId  String?  
-  equipment      Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleEventId  String?
+  equipment      Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 enum BookingStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+model LabAccess {
+  id          String   @id @default(uuid())
+  userId      String
+  labId       String
+  grantedById String?
+  grantedAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lab         Lab      @relation(fields: [labId], references: [id], onDelete: Cascade)
+  grantedBy   User?    @relation("LabAccessGrantedBy", fields: [grantedById], references: [id])
+
+  @@unique([userId, labId])
+}
+
+model EquipmentAccess {
+  id          String    @id @default(uuid())
+  userId      String
+  equipmentId String
+  grantedById String?
+  grantedAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  grantedBy   User?     @relation("EquipmentAccessGrantedBy", fields: [grantedById], references: [id])
+
+  @@unique([userId, equipmentId])
+}
+
+model AccessRequest {
+  id           String              @id @default(uuid())
+  userId       String
+  labId        String?
+  equipmentId  String?
+  type         AccessRequestType
+  status       AccessRequestStatus @default(PENDING)
+  message      String?             @db.Text
+  requestedAt  DateTime            @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lab          Lab?                @relation(fields: [labId], references: [id])
+  equipment    Equipment?          @relation(fields: [equipmentId], references: [id])
+  resolvedBy   User?               @relation("AccessRequestResolvedBy", fields: [resolvedById], references: [id])
+}
+
+enum AccessRequestType {
+  LAB
+  EQUIPMENT
+}
+
+enum AccessRequestStatus {
   PENDING
   APPROVED
   DENIED

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { SessionForm } from "./SessionForm";
 import { BookingForm } from "./BookingForm";
+import { LabAccessGate } from "./LabAccessGate";
+import { EquipmentAccessGate } from "./EquipmentAccessGate";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -17,7 +19,7 @@ export default async function EquipmentDetailPage(props: { params: Promise<{ id:
     include: {
       lab: true,
       usageLogs: {
-        where: { endTime: null }, // Active session
+        where: { endTime: null },
         include: { user: true },
       },
       bookings: {
@@ -36,6 +38,39 @@ export default async function EquipmentDetailPage(props: { params: Promise<{ id:
   const activeLog = equipment.usageLogs[0] || null;
   // @ts-ignore
   const isCurrentUserUsing = !!(activeLog && session?.user && activeLog.userId === session.user.id);
+
+  // @ts-ignore
+  const userId = session?.user?.id as string | undefined;
+  // @ts-ignore
+  const isAdmin = session?.user?.role === 'ADMIN';
+
+  let labAccess = null;
+  let equipmentAccess = null;
+  let pendingLabRequest = null;
+  let pendingEquipmentRequest = null;
+
+  if (userId && !isAdmin) {
+    [labAccess, equipmentAccess, pendingLabRequest, pendingEquipmentRequest] = await Promise.all([
+      prisma.labAccess.findUnique({
+        where: { userId_labId: { userId, labId: equipment.labId } },
+      }),
+      prisma.equipmentAccess.findUnique({
+        where: { userId_equipmentId: { userId, equipmentId: equipment.id } },
+      }),
+      prisma.accessRequest.findFirst({
+        where: { userId, labId: equipment.labId, type: 'LAB', status: 'PENDING' },
+      }),
+      prisma.accessRequest.findFirst({
+        where: { userId, equipmentId: equipment.id, type: 'EQUIPMENT', status: 'PENDING' },
+      }),
+    ]);
+  }
+
+  const hasLabAccess = isAdmin || !!labAccess;
+  // Equipment-level access gate only applies when the admin has turned on onboardingRequired
+  const needsEquipAccess = !!(equipment as any).onboardingRequired;
+  const hasEquipAccess = isAdmin || !needsEquipAccess || !!equipmentAccess;
+  const hasFullAccess = hasLabAccess && hasEquipAccess;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -66,6 +101,20 @@ export default async function EquipmentDetailPage(props: { params: Promise<{ id:
                 You must sign in with your university account to log usage for this equipment.
               </p>
             </div>
+          ) : !hasLabAccess ? (
+            <LabAccessGate
+              labId={equipment.labId}
+              labName={equipment.lab.name}
+              hasPendingRequest={!!pendingLabRequest}
+            />
+          ) : !hasEquipAccess ? (
+            <EquipmentAccessGate
+              equipmentId={equipment.id}
+              equipmentName={equipment.name}
+              // @ts-ignore
+              onboardingMaterials={equipment.onboardingMaterials ?? null}
+              hasPendingRequest={!!pendingEquipmentRequest}
+            />
           ) : (
             <div className="mt-4">
               <SessionForm
@@ -92,7 +141,7 @@ export default async function EquipmentDetailPage(props: { params: Promise<{ id:
             </div>
           )}
 
-          {session && <BookingForm equipmentId={equipment.id} />}
+          {session && hasFullAccess && <BookingForm equipmentId={equipment.id} />}
         </div>
       </div>
     </div>

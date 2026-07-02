@@ -26,19 +26,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Admin Menu</h2>
         <nav className="space-y-2">
           <Link href="/admin" className="block px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-indigo-700 hover:bg-indigo-50">
-            Overview / Analytics
+            Live Status
           </Link>
           <Link href="/admin/bookings" className="block px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 flex justify-between items-center">
             Booking Requests
           </Link>
+          <Link href="/admin/access" className="block px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-indigo-700 hover:bg-indigo-50">
+            Access Management
+          </Link>
           <Link href="/admin/schedules" className="block px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-indigo-700 hover:bg-indigo-50">
             Global Schedules
           </Link>
-          <Link href="/admin/equipment" className="block px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-indigo-700 hover:bg-indigo-50">
-            Equipment & QR Codes
-          </Link>
           <Link href="/admin/labs" className="block px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-indigo-700 hover:bg-indigo-50">
-            Labs Management
+            Labs &amp; Equipment
           </Link>
         </nav>
       </aside>
