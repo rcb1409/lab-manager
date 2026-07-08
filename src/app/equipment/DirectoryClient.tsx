@@ -1,86 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Search, Lock, CheckCircle, Clock } from "lucide-react";
-import { requestLabAccess } from "@/app/equipment/[id]/access-actions";
 
 interface LabData {
   id: string;
   name: string;
   building: string;
   room: string;
+  description: string | null;
+  imageUrl: string | null;
   equipmentCount: number;
   hasAccess: boolean;
   hasPendingRequest: boolean;
-}
-
-function LabAccessForm({ labId }: { labId: string }) {
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
-  const [isPending, startTransition] = useTransition();
-
-  if (submitted) {
-    return (
-      <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 text-center">
-        Request submitted. The admin will review it shortly.
-      </div>
-    );
-  }
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="mt-3 w-full text-sm font-bold py-2 px-3 rounded-md border border-ncsu-red text-ncsu-red bg-white hover:bg-red-50 transition-colors"
-      >
-        Request Lab Access
-      </button>
-    );
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    startTransition(async () => {
-      const result = await requestLabAccess(labId, message);
-      if (result.success) {
-        setSubmitted(true);
-      } else {
-        setError(result.error || "Failed to submit request.");
-      }
-    });
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="mt-3 space-y-2">
-      <textarea
-        rows={2}
-        value={message}
-        onChange={e => setMessage(e.target.value)}
-        placeholder="Briefly describe your research or reason for needing access..."
-        className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-ncsu-red placeholder-gray-400"
-      />
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="flex-1 text-sm font-bold py-2 px-3 rounded-md bg-ncsu-red text-white hover:opacity-90 transition-opacity disabled:opacity-60"
-        >
-          {isPending ? "Submitting…" : "Submit Request"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="text-sm text-gray-500 hover:text-gray-700 px-3"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
-  );
 }
 
 function LabCard({
@@ -92,6 +25,10 @@ function LabCard({
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+      {lab.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={lab.imageUrl} alt="" className="h-32 w-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+      )}
       <div className="bg-ncsu-red px-5 py-4 text-white">
         <h2 className="font-slab font-bold text-lg leading-snug">{lab.name}</h2>
         <p className="text-white/75 text-xs mt-1 font-medium uppercase tracking-wide">
@@ -100,6 +37,9 @@ function LabCard({
       </div>
 
       <div className="p-5 flex flex-col flex-1 gap-3">
+        {lab.description && (
+          <p className="text-sm text-gray-600 line-clamp-2">{lab.description}</p>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">
             {lab.equipmentCount} instrument{lab.equipmentCount !== 1 ? "s" : ""}
@@ -121,23 +61,17 @@ function LabCard({
         </div>
 
         <div className="mt-auto pt-1">
-          {lab.hasAccess ? (
+          {isLoggedIn ? (
             <Link
               href={`/labs/${lab.id}`}
               className="block w-full text-center text-sm font-bold py-2 px-4 rounded-md bg-ncsu-red text-white hover:opacity-90 transition-opacity"
             >
               View Equipment →
             </Link>
-          ) : !isLoggedIn ? (
-            <p className="text-xs text-gray-500 text-center py-2">
-              Sign in to request access to this lab.
-            </p>
-          ) : lab.hasPendingRequest ? (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 text-center">
-              Your request is awaiting admin review.
-            </p>
           ) : (
-            <LabAccessForm labId={lab.id} />
+            <p className="text-xs text-gray-500 text-center py-2">
+              Sign in to view equipment and request access.
+            </p>
           )}
         </div>
       </div>

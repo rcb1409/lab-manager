@@ -8,12 +8,16 @@ import { OnboardingEditClient } from "../equipment/OnboardingEditClient";
 import { AttachCalendarClient } from "../equipment/AttachCalendarClient";
 import { DetachCalendarClient } from "../equipment/DetachCalendarClient";
 import { AddEquipmentToLabClient } from "./AddEquipmentToLabClient";
+import { EditLabClient } from "./EditLabClient";
+import { EditEquipmentClient } from "../equipment/EditEquipmentClient";
 import { QRCard } from "../equipment/QRCard";
 
 type EquipmentData = {
   id: string;
   name: string;
   type: string;
+  description: string | null;
+  imageUrl: string | null;
   status: string;
   googleCalendarId: string | null;
   onboardingRequired: boolean;
@@ -28,6 +32,8 @@ type LabData = {
   name: string;
   building: string;
   room: string;
+  description: string | null;
+  imageUrl: string | null;
   bookingWindowStart: string | null;
   bookingWindowEnd: string | null;
   bookingDays: string | null;
@@ -100,6 +106,7 @@ function EquipmentRow({ eq }: { eq: EquipmentData }) {
         />
         <span className="text-sm font-bold text-gray-900">{eq.name}</span>
         <span className="text-xs text-gray-400">{eq.type}</span>
+        <EditEquipmentClient equipment={eq} />
         <span
           className={`ml-auto text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${statusBadgeClass(eq.status)}`}
         >
@@ -186,9 +193,12 @@ function LabSection({ lab }: { lab: LabData }) {
         </button>
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-base font-bold text-gray-900 font-slab">
-            {lab.name}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-gray-900 font-slab">
+              {lab.name}
+            </h2>
+            <EditLabClient lab={lab} />
+          </div>
           <p className="text-xs text-gray-500 mt-0.5">
             {lab.building} · Room {lab.room} ·{" "}
             {lab.equipment.length} instrument

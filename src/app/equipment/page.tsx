@@ -35,6 +35,8 @@ export default async function LabsDirectoryPage() {
     name: lab.name,
     building: lab.building,
     room: lab.room,
+    description: (lab as any).description ?? null,
+    imageUrl: (lab as any).imageUrl ?? null,
     equipmentCount: lab._count.equipment,
     hasAccess: isAdmin || grantedLabIds.has(lab.id),
     hasPendingRequest: pendingLabIds.has(lab.id),

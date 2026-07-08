@@ -26,7 +26,7 @@ export const updateLabAvailability = adminAction(
   }
 );
 
-export async function addLab(data: { name: string; building: string; room: string }) {
+export async function addLab(data: { name: string; building: string; room: string; description?: string; imageUrl?: string }) {
   const session = await getServerSession(authOptions);
   // @ts-ignore
   if (!session?.user || session.user.role !== 'ADMIN') throw new Error("Unauthorized");
@@ -35,7 +35,9 @@ export async function addLab(data: { name: string; building: string; room: strin
     data: {
       name: data.name,
       building: data.building,
-      room: data.room
+      room: data.room,
+      description: data.description || null,
+      imageUrl: data.imageUrl || null,
     }
   });
 
@@ -43,3 +45,35 @@ export async function addLab(data: { name: string; building: string; room: strin
   revalidatePath('/admin/equipment');
   revalidatePath('/equipment');
 }
+
+export const updateLab = adminAction(
+  async (
+    _session,
+    labId: string,
+    data: { name: string; building: string; room: string; description?: string; imageUrl?: string }
+  ) => {
+    await prisma.lab.update({
+      where: { id: labId },
+      data: {
+        name: data.name,
+        building: data.building,
+        room: data.room,
+        description: data.description || null,
+        imageUrl: data.imageUrl || null,
+      },
+    });
+
+    revalidatePath('/admin/labs');
+    revalidatePath('/admin/equipment');
+    revalidatePath('/equipment');
+    revalidatePath(`/labs/${labId}`);
+  }
+);
+
+export const deleteLab = adminAction(async (_session, labId: string) => {
+  await prisma.lab.delete({ where: { id: labId } });
+
+  revalidatePath('/admin/labs');
+  revalidatePath('/admin/equipment');
+  revalidatePath('/equipment');
+});

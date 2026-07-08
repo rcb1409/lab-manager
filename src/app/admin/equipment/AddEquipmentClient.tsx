@@ -8,16 +8,20 @@ export function AddEquipmentClient({ labs }: { labs: any[] }) {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [type, setType] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [labId, setLabId] = useState(labs.length > 0 ? labs[0].id : "");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await addEquipment({ name, type, labId });
+      await addEquipment({ name, type, labId, description, imageUrl });
       setIsOpen(false);
       setName("");
       setType("");
+      setDescription("");
+      setImageUrl("");
     } catch (err) {
       alert("Failed to add equipment.");
     } finally {
@@ -81,17 +85,39 @@ export function AddEquipmentClient({ labs }: { labs: any[] }) {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-700 mb-1">Description <span className="text-gray-400 normal-case font-normal">(optional)</span></label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red resize-none"
+                  placeholder="Short blurb about this instrument..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-700 mb-1">Image URL <span className="text-gray-400 normal-case font-normal">(optional)</span></label>
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={e => setImageUrl(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+                  placeholder="https://..."
+                />
+              </div>
+
               <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
-                <button 
-                  type="button" 
-                  onClick={() => setIsOpen(false)} 
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
                   className="text-gray-600 hover:bg-gray-100 rounded-md px-4 py-2 text-sm font-medium"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={loading} 
+                <button
+                  type="submit"
+                  disabled={loading}
                   className="bg-ncsu-red text-white flex justify-center py-2 px-6 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50"
                 >
                   {loading ? "Saving..." : "Save Equipment"}

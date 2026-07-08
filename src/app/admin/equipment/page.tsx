@@ -5,6 +5,7 @@ import { AddEquipmentClient } from "./AddEquipmentClient";
 import { AttachCalendarClient } from "./AttachCalendarClient";
 import { DetachCalendarClient } from "./DetachCalendarClient";
 import { OnboardingEditClient } from "./OnboardingEditClient";
+import { EditEquipmentClient } from "./EditEquipmentClient";
 
 const prisma = new PrismaClient();
 
@@ -43,7 +44,18 @@ export default async function AdminEquipmentPage() {
             {equipment.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-4 text-sm font-bold text-gray-900">
-                  <div>{item.name}</div>
+                  <div className="flex items-center gap-2">
+                    {item.name}
+                    <EditEquipmentClient
+                      equipment={{
+                        id: item.id,
+                        name: item.name,
+                        type: item.type,
+                        description: (item as any).description ?? null,
+                        imageUrl: (item as any).imageUrl ?? null,
+                      }}
+                    />
+                  </div>
                   <div className="text-xs text-gray-400 font-normal">{item.type}</div>
                 </td>
                 <td className="px-4 py-4 text-sm text-ncsu-gray font-medium whitespace-nowrap">{item.lab.name}</td>

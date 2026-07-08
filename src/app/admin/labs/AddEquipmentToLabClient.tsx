@@ -14,6 +14,8 @@ export function AddEquipmentToLabClient({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [type, setType] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -21,10 +23,12 @@ export function AddEquipmentToLabClient({
     e.preventDefault();
     setLoading(true);
     try {
-      await addEquipment({ name, type, labId });
+      await addEquipment({ name, type, labId, description, imageUrl });
       setOpen(false);
       setName("");
       setType("");
+      setDescription("");
+      setImageUrl("");
       router.refresh();
     } catch {
       alert("Failed to add equipment.");
@@ -81,6 +85,30 @@ export function AddEquipmentToLabClient({
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                   placeholder="e.g. Imaging"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-700 mb-1">
+                  Description <span className="text-gray-400 normal-case font-normal">(optional)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Short blurb about this instrument..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-gray-700 mb-1">
+                  Image URL <span className="text-gray-400 normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
                 />
               </div>

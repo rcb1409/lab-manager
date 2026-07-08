@@ -8,17 +8,62 @@ import { adminAction } from "@/lib/action-utils";
 
 const prisma = new PrismaClient();
 
-export const addEquipment = adminAction(async (session, data: { name: string; type: string; labId: string }) => {
+export const addEquipment = adminAction(async (session, data: { name: string; type: string; labId: string; description?: string; imageUrl?: string }) => {
   await prisma.equipment.create({
     data: {
       name: data.name,
       type: data.type,
       labId: data.labId,
+      description: data.description || null,
+      imageUrl: data.imageUrl || null,
       status: 'AVAILABLE' // New equipment always starts as available
     }
   });
 
   revalidatePath('/admin/equipment');
+  revalidatePath('/equipment');
+});
+
+export const updateEquipment = adminAction(
+  async (
+    _session,
+    equipmentId: string,
+    data: { name: string; type: string; description?: string; imageUrl?: string }
+  ) => {
+    await prisma.equipment.update({
+      where: { id: equipmentId },
+      data: {
+        name: data.name,
+        type: data.type,
+        description: data.description || null,
+        imageUrl: data.imageUrl || null,
+      },
+    });
+
+    revalidatePath('/admin/equipment');
+    revalidatePath('/admin/labs');
+    revalidatePath('/equipment');
+    revalidatePath(`/equipment/${equipmentId}`);
+  }
+);
+
+export const deleteEquipment = adminAction(async (_session, equipmentId: string) => {
+  const equipment = await prisma.equipment.findUnique({ where: { id: equipmentId } });
+  if (!equipment) throw new Error("Equipment not found");
+
+  if (equipment.googleCalendarId) {
+    try {
+      const { deleteEquipmentCalendar } = await import('@/lib/calendar-service');
+      await deleteEquipmentCalendar(equipment.googleCalendarId);
+    } catch (e) {
+      console.error("Failed to delete Google Calendar while deleting equipment", e);
+    }
+  }
+
+  await prisma.equipment.delete({ where: { id: equipmentId } });
+
+  revalidatePath('/admin/equipment');
+  revalidatePath('/admin/labs');
   revalidatePath('/equipment');
 });
 

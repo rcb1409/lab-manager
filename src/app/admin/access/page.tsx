@@ -46,11 +46,25 @@ export default async function AdminAccessPage() {
     <div className="space-y-10">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-slab font-bold text-gray-900">Access Management</h1>
-        {pendingRequests.length > 0 && (
-          <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">
-            {pendingRequests.length} pending
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {pendingRequests.length > 0 && (
+            <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">
+              {pendingRequests.length} pending
+            </span>
+          )}
+          <a
+            href="/api/admin/export/access-grants"
+            className="text-xs font-bold px-3 py-1.5 rounded-md border border-gray-300 text-gray-600 bg-white hover:bg-gray-50 transition-colors"
+          >
+            Export Grants CSV
+          </a>
+          <a
+            href="/api/admin/export/access-requests"
+            className="text-xs font-bold px-3 py-1.5 rounded-md border border-gray-300 text-gray-600 bg-white hover:bg-gray-50 transition-colors"
+          >
+            Export Requests CSV
+          </a>
+        </div>
       </div>
 
       {/* Pending Requests */}

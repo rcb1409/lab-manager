@@ -25,7 +25,15 @@ export default async function AdminBookingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Booking Requests</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Booking Requests</h1>
+        <a
+          href="/api/admin/export/bookings"
+          className="text-xs font-bold px-3 py-1.5 rounded-md border border-gray-300 text-gray-600 bg-white hover:bg-gray-50 transition-colors"
+        >
+          Export CSV
+        </a>
+      </div>
 
       <div className="mb-10">
         <h2 className="text-xl font-bold text-gray-800 mb-4 bg-amber-50 inline-block px-3 py-1 rounded text-amber-800">Pending Approvals</h2>

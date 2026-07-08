@@ -11,9 +11,11 @@ type SessionFormProps = {
     userName: string;
     isCurrentUser: boolean;
   } | null;
+  /** Whether the current user has full (lab + equipment) access to start a session. */
+  canRequest: boolean;
 };
 
-export function SessionForm({ equipmentId, status, activeLog }: SessionFormProps) {
+export function SessionForm({ equipmentId, status, activeLog, canRequest }: SessionFormProps) {
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [tentativeEndTime, setTentativeEndTime] = useState<string>("");
@@ -103,11 +105,22 @@ export function SessionForm({ equipmentId, status, activeLog }: SessionFormProps
     }
   }
 
+  if (!canRequest) {
+    return (
+      <div className="bg-white p-6 rounded-lg border border-gray-200 text-center mt-2 shadow-sm">
+        <h3 className="text-gray-900 font-bold text-lg mb-2 font-slab">Equipment Available</h3>
+        <p className="text-gray-600 text-sm">
+          Request the access above to start a session or book this equipment.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white p-6 rounded-lg border border-gray-200 text-center mt-2 shadow-sm">
       <h3 className="text-gray-900 font-bold text-lg mb-2 font-slab">Equipment Available</h3>
       <p className="text-gray-600 mb-4 text-sm">You can start using this equipment immediately.</p>
-      
+
       <div className="mb-6 text-left">
         <label htmlFor="tentativeEndTime" className="block text-sm font-medium text-gray-700 mb-1">
           Tentative End Time

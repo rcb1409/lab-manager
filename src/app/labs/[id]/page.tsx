@@ -47,11 +47,20 @@ export default async function LabDetailPage(props: {
         &larr; Labs Directory
       </Link>
 
-      <div className="bg-ncsu-red text-white rounded-xl px-8 py-6 mt-4 mb-8 shadow-sm">
-        <h1 className="text-3xl font-slab font-bold">{lab.name}</h1>
-        <p className="mt-1 text-white/75 text-sm font-medium uppercase tracking-wide">
-          {lab.building} &middot; Room {lab.room}
-        </p>
+      <div className="rounded-xl overflow-hidden mt-4 mb-8 shadow-sm">
+        {(lab as any).imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={(lab as any).imageUrl} alt="" className="h-48 w-full object-cover" />
+        )}
+        <div className="bg-ncsu-red text-white px-8 py-6">
+          <h1 className="text-3xl font-slab font-bold">{lab.name}</h1>
+          <p className="mt-1 text-white/75 text-sm font-medium uppercase tracking-wide">
+            {lab.building} &middot; Room {lab.room}
+          </p>
+          {(lab as any).description && (
+            <p className="mt-3 text-white/90 text-sm max-w-2xl">{(lab as any).description}</p>
+          )}
+        </div>
       </div>
 
       {!session ? (
@@ -59,14 +68,18 @@ export default async function LabDetailPage(props: {
           You must sign in with your university account to request access and
           view equipment in this lab.
         </div>
-      ) : !hasAccess ? (
-        <LabAccessGate
-          labId={lab.id}
-          labName={lab.name}
-          hasPendingRequest={hasPendingRequest}
-        />
       ) : (
         <div>
+          {!hasAccess && (
+            <div className="mb-6">
+              <LabAccessGate
+                labId={lab.id}
+                labName={lab.name}
+                hasPendingRequest={hasPendingRequest}
+              />
+            </div>
+          )}
+
           <h2 className="text-lg font-bold text-gray-800 mb-4">
             Equipment{" "}
             <span className="text-gray-400 font-normal text-sm">
@@ -83,13 +96,21 @@ export default async function LabDetailPage(props: {
                 <Link
                   key={item.id}
                   href={`/equipment/${item.id}`}
-                  className="block bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-ncsu-red/40 transition-shadow duration-200 p-4"
+                  className="block bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-ncsu-red/40 transition-shadow duration-200 overflow-hidden"
                 >
+                  {item.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.imageUrl} alt="" className="h-28 w-full object-cover" />
+                  )}
+                  <div className="p-4">
                   <div className="pb-3 border-b border-gray-100 mb-3">
                     <h3 className="text-base font-bold text-gray-900 truncate">
                       {item.name}
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">{item.type}</p>
+                    {item.description && (
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.description}</p>
+                    )}
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     {item.onboardingRequired && (
@@ -108,6 +129,7 @@ export default async function LabDetailPage(props: {
                     >
                       {item.status.replace("_", " ")}
                     </span>
+                  </div>
                   </div>
                 </Link>
               ))}

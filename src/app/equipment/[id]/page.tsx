@@ -79,11 +79,18 @@ export default async function EquipmentDetailPage(props: { params: Promise<{ id:
       </Link>
 
       <div className="bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200">
+        {(equipment as any).imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={(equipment as any).imageUrl} alt="" className="h-48 w-full object-cover" />
+        )}
         <div className="bg-ncsu-red px-6 py-6 text-white">
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-slab font-bold tracking-tight">{equipment.name}</h1>
               <p className="mt-1 text-white/80 text-sm font-medium">{equipment.type} in {equipment.lab.name}</p>
+              {(equipment as any).description && (
+                <p className="mt-3 text-white/90 text-sm max-w-2xl">{(equipment as any).description}</p>
+              )}
             </div>
             <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-bold uppercase tracking-wider shadow-sm border ${equipment.status === 'AVAILABLE' ? 'bg-white text-green-700 border-white' :
                 equipment.status === 'IN_USE' ? 'bg-amber-400 text-amber-900 border-amber-400' :
@@ -101,31 +108,36 @@ export default async function EquipmentDetailPage(props: { params: Promise<{ id:
                 You must sign in with your university account to log usage for this equipment.
               </p>
             </div>
-          ) : !hasLabAccess ? (
-            <LabAccessGate
-              labId={equipment.labId}
-              labName={equipment.lab.name}
-              hasPendingRequest={!!pendingLabRequest}
-            />
-          ) : !hasEquipAccess ? (
-            <EquipmentAccessGate
-              equipmentId={equipment.id}
-              equipmentName={equipment.name}
-              // @ts-ignore
-              onboardingMaterials={equipment.onboardingMaterials ?? null}
-              hasPendingRequest={!!pendingEquipmentRequest}
-            />
           ) : (
-            <div className="mt-4">
-              <SessionForm
-                equipmentId={equipment.id}
-                status={equipment.status as string}
-                activeLog={activeLog ? {
-                  id: activeLog.id,
-                  userName: activeLog.user.name ? `${activeLog.user.name} (${activeLog.user.email})` : activeLog.user.email,
-                  isCurrentUser: isCurrentUserUsing
-                } : null}
-              />
+            <div className="space-y-4">
+              {!hasLabAccess && (
+                <LabAccessGate
+                  labId={equipment.labId}
+                  labName={equipment.lab.name}
+                  hasPendingRequest={!!pendingLabRequest}
+                />
+              )}
+              {hasLabAccess && !hasEquipAccess && (
+                <EquipmentAccessGate
+                  equipmentId={equipment.id}
+                  equipmentName={equipment.name}
+                  // @ts-ignore
+                  onboardingMaterials={equipment.onboardingMaterials ?? null}
+                  hasPendingRequest={!!pendingEquipmentRequest}
+                />
+              )}
+              <div className="mt-4">
+                <SessionForm
+                  equipmentId={equipment.id}
+                  status={equipment.status as string}
+                  canRequest={hasFullAccess}
+                  activeLog={activeLog ? {
+                    id: activeLog.id,
+                    userName: activeLog.user.name ? `${activeLog.user.name} (${activeLog.user.email})` : activeLog.user.email,
+                    isCurrentUser: isCurrentUserUsing
+                  } : null}
+                />
+              </div>
             </div>
           )}
         </div>

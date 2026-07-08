@@ -73,6 +73,12 @@ export default async function AdminSchedulesPage() {
             Monitor all equipment calendars and schedules from a single view.
           </p>
         </div>
+        <a
+          href="/api/admin/export/usage-logs"
+          className="text-xs font-bold px-3 py-1.5 rounded-md border border-gray-300 text-gray-600 bg-white hover:bg-gray-50 transition-colors whitespace-nowrap"
+        >
+          Export Usage Logs CSV
+        </a>
       </div>
 
       <ScheduleMonitorClient
