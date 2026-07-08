@@ -49,7 +49,7 @@ export function Header() {
               </div>
             ) : (
               <button
-                onClick={() => signIn("google")}
+                onClick={() => signIn("google", { callbackUrl: "/equipment" })}
                 className="font-bold text-sm uppercase border border-white/30 px-4 py-1.5 rounded hover:bg-white/10 transition-colors flex items-center gap-2"
               >
                 <LogIn size={16} /> Sign In
