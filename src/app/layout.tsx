@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Providers } from "./providers";
-import { UtilityBar } from "@/components/UtilityBar";
+import { Providers } from "./providers";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import "./globals.css";
@@ -24,7 +24,6 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased flex flex-col min-h-screen relative">
         <Providers>
-          <UtilityBar />
           <Header />
           <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8 text-sm text-gray-700 leading-relaxed">
             {children}
